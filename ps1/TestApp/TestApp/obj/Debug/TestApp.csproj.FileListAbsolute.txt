@@ -1,0 +1,6 @@
+E:\_school\CS4480\ps1\TestApp\TestApp\bin\Debug\TestApp.exe.config
+E:\_school\CS4480\ps1\TestApp\TestApp\obj\Debug\TestApp.csprojResolveAssemblyReference.cache
+E:\_school\CS4480\ps1\TestApp\TestApp\bin\Debug\TestApp.exe
+E:\_school\CS4480\ps1\TestApp\TestApp\bin\Debug\TestApp.pdb
+E:\_school\CS4480\ps1\TestApp\TestApp\obj\Debug\TestApp.exe
+E:\_school\CS4480\ps1\TestApp\TestApp\obj\Debug\TestApp.pdb

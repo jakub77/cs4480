@@ -1,0 +1,42 @@
+For simplicity your proxy should support version 1.0 of the HTTP
+protocol, as defined in RFC 1945.
+
+A significant simplification that comes from limiting the proxy
+functionality to version 1.0 is that your proxy does not need to
+support persistent connections. Recall that the default behavior
+for HTTP 1.0 is non-persistent connections. Note, however, that
+most browsers, including the latest version of Firefox automatically
+add the optional "Connection: keep-alive" header line. Also, with
+the latest version of Firefox it is no longer possible to disable
+this behavior. I suggest you download an older version of Firefox
+so that you can disable this. I tested with Firefox 15.0, although
+other versions might also work. (See notes below.)
+
+IMPORTANT: Note that older versions of browsers might have security
+vulnerabilities. I therefor strongly suggest that if you get an
+older version of Firefox to use for this programming assignment,
+you do not use that for general web browsing, but only for the
+assignment.
+
+A further implication of using HTTP 1.0 is that you can infer that
+you have received all the content from the server when the server
+closes the connection. (See: http://www8.org/w8-papers/5c-protocols/key/key.html)
+
+Also, as specified in the assignment the request forwarded to
+the server should contain a  "Connection: close" header line 
+to ensure that it closes the connection. (This might imply
+replacing a "Connection: keep-alive" header if the client
+had that in its request.)
+
+Note about configuring Firefox:
+
+Type 'about:config' in the title/search bar. You will be presented
+with a very large number of parameter settings. You should set
+the following parameters as shown:
+
+network.http.proxy.version 1.0
+network.http.version 1.0
+network.http.keep-alive false
+network.http.proxy.keep-alive false
+network.http.pipelining false
+network.http.proxy.pipelining false

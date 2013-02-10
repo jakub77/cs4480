@@ -1,0 +1,7 @@
+
+public class HttpResponse {
+	public HttpResponse()
+	{
+		
+	}
+}
