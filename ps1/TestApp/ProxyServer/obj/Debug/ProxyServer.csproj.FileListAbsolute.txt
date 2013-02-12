@@ -1,0 +1,6 @@
+E:\_school\cs4480\ps1\TestApp\ProxyServer\bin\Debug\ProxyServer.exe.config
+E:\_school\cs4480\ps1\TestApp\ProxyServer\bin\Debug\ProxyServer.exe
+E:\_school\cs4480\ps1\TestApp\ProxyServer\bin\Debug\ProxyServer.pdb
+E:\_school\cs4480\ps1\TestApp\ProxyServer\obj\Debug\ProxyServer.csprojResolveAssemblyReference.cache
+E:\_school\cs4480\ps1\TestApp\ProxyServer\obj\Debug\ProxyServer.exe
+E:\_school\cs4480\ps1\TestApp\ProxyServer\obj\Debug\ProxyServer.pdb
