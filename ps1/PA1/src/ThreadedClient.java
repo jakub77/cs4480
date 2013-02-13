@@ -4,19 +4,16 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
-import java.net.UnknownHostException;
 
 public class ThreadedClient implements Runnable
 {
 	private Socket client;
 	private HttpCache cache;
-	private int threadNumber;
 
 	public ThreadedClient(Socket parameter, HttpCache cache, int threadNumber)
 	{
 		client = parameter;
 		this.cache = cache;
-		this.threadNumber = threadNumber;
 	}
 
 	public void run()
@@ -50,57 +47,61 @@ public class ThreadedClient implements Runnable
 			return;
 		}
 
+		byte[] data;
 		// See if we have a cached copy of the
-
-		/* Send request to server */
-		try
+		if (!cache.InCache(request.absoluteURL))
 		{
-			/* Open socket and write request to socket */
-			server = new Socket(request.getHost(), request.getPort());
-			DataOutputStream toServer = new DataOutputStream(server.getOutputStream());
-			String reqString = request.toString();
-			toServer.write(reqString.getBytes("UTF-8"));
-			// System.out.println(reqString + "-------\n");
-		}
-		catch (UnknownHostException e)
-		{
-			System.out.println("Unknown host: " + request.getHost());
-			System.out.println(e);
-			return;
-		}
-		catch (IOException e)
-		{
-			System.out.println("Error writing request to server: " + e);
-			return;
-		}
-
-		/* Read response and forward it to client */
-		try
-		{
-			DataInputStream fromServer = new DataInputStream(server.getInputStream());
-			response = new HttpResponse(fromServer);			
-			DataOutputStream toClient = new DataOutputStream(client.getOutputStream());
-
-			/* Write response to client. First headers, then body */
-			// IF the client closes the connection early, ignore it.
+			/* Send request to server */
 			try
 			{
-				toClient.write(response.toString().getBytes("UTF-8"));
-				toClient.write(response.body);
+				/* Open socket and write request to socket */
+				server = new Socket(request.getHost(), request.getPort());
+				DataOutputStream toServer = new DataOutputStream(server.getOutputStream());
+				String reqString = request.toString();
+				toServer.write(reqString.getBytes("UTF-8"));
+
+				DataInputStream fromServer = new DataInputStream(server.getInputStream());
+				response = new HttpResponse(fromServer);
+				/* Write response to client. First headers, then body */
+				// IF the client closes the connection early, ignore it.
+				byte[] headers = response.toString().getBytes("UTF-8");
+				data = new byte[response.body.length + headers.length];
+				for (int i = 0; i < headers.length; i++)
+					data[i] = headers[i];
+				for (int i = 0; i < response.body.length; i++)
+					data[i + headers.length] = response.body[i];
+				server.close();
+				cache.InsertPage(request.absoluteURL, data);
 			}
 			catch (Exception e)
 			{
-
+				System.out.println("Error in non-cache code " + e);
+				return;
 			}
-
-			client.close();
-			server.close();
-			/* Insert object into the cache */
-			/* Fill in (optional exercise only) */
 		}
-		catch (IOException e)
+		else
 		{
-			System.out.println("Error writing response to client: " + e);
+			data = cache.GetPage(request.absoluteURL);
 		}
+
+		try
+		{
+			DataOutputStream toClient = new DataOutputStream(client.getOutputStream());
+			// toClient.write(response.toString().getBytes("UTF-8"));
+			// toClient.write(response.body);
+			try
+			{
+				toClient.write(data);
+			}
+			catch (Exception e)
+			{
+			}
+			client.close();
+		}
+		catch (Exception e)
+		{
+			System.out.println("Error page back to client " + e);
+		}
+
 	}
 }

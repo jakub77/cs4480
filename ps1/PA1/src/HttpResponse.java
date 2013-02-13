@@ -6,9 +6,6 @@
  */
 
 import java.io.*;
-import java.net.*;
-import java.nio.CharBuffer;
-import java.util.*;
 
 public class HttpResponse
 {
@@ -75,19 +72,6 @@ public class HttpResponse
 			System.out.println("Error reading headers from server: " + e);
 			return;
 		}
-
-//		try
-//		{
-//			while(fromServer.ready())
-//			{
-//				bodyString += fromServer.readLine();			
-//			}
-//		}
-//		catch (IOException e)
-//		{
-//			System.out.println("Error reading body: " + e);
-//			return;
-//		}
 			
 		try
 		{
