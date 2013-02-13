@@ -1,0 +1,108 @@
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.Socket;
+
+public class ThreadedClient implements Runnable
+{
+	private Socket client;
+	private HttpCache cache;
+
+	public ThreadedClient(Socket parameter, HttpCache cache, int threadNumber)
+	{
+		client = parameter;
+		this.cache = cache;
+		System.out.println(threadNumber + " started!");
+	}
+
+	public void run()
+	{
+		Socket server = null;
+		HttpRequest request = null;
+		HttpResponse response = null;
+
+		/*
+		 * Process request. If there are any exceptions, then simply return and
+		 * end this request. This unfortunately means the client will hang for a
+		 * while, until it timeouts.
+		 */
+
+		/* Read request */
+		try
+		{
+			BufferedReader fromClient = new BufferedReader(new InputStreamReader(client.getInputStream()));
+			request = new HttpRequest(fromClient);
+		}
+		catch (IOException e)
+		{
+			System.out.println("Error reading request from client: " + e);
+			return;
+		}
+
+		// Check to see if the request was a null request (Client didn't send
+		// data).
+		if (request.nullRequest)
+		{
+			return;
+		}
+
+		byte[] data;
+		// See if we have a cached copy of the
+		if (!cache.InCache(request.absoluteURL))
+		{
+			/* Send request to server */
+			try
+			{
+				/* Open socket and write request to socket */
+				server = new Socket(request.getHost(), request.getPort());
+				DataOutputStream toServer = new DataOutputStream(server.getOutputStream());
+				String reqString = request.toString();
+				toServer.write(reqString.getBytes("UTF-8"));
+
+				DataInputStream fromServer = new DataInputStream(server.getInputStream());
+				response = new HttpResponse(fromServer);
+				/* Write response to client. First headers, then body */
+				// IF the client closes the connection early, ignore it.
+				byte[] headers = response.toString().getBytes("UTF-8");
+				data = new byte[response.body.length + headers.length];
+				for (int i = 0; i < headers.length; i++)
+					data[i] = headers[i];
+				for (int i = 0; i < response.body.length; i++)
+					data[i + headers.length] = response.body[i];
+				server.close();
+				cache.InsertPage(request.absoluteURL, data);
+			}
+			catch (Exception e)
+			{
+				System.out.println("Error in non-cache code " + e);
+				return;
+			}
+		}
+		else
+		{
+			data = cache.GetPage(request.absoluteURL);
+		}
+
+		try
+		{
+			DataOutputStream toClient = new DataOutputStream(client.getOutputStream());
+			// toClient.write(response.toString().getBytes("UTF-8"));
+			// toClient.write(response.body);
+			try
+			{
+				toClient.write(data);
+			}
+			catch (Exception e)
+			{
+			}
+			client.close();
+		}
+		catch (Exception e)
+		{
+			System.out.println("Error page back to client " + e);
+		}
+
+	}
+}

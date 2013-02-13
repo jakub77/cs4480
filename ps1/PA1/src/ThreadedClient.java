@@ -4,11 +4,13 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
+import java.net.UnknownHostException;
 
 public class ThreadedClient implements Runnable
 {
 	private Socket client;
 	private HttpCache cache;
+	private String CRLF = "\r\n";
 
 	public ThreadedClient(Socket parameter, HttpCache cache, int threadNumber)
 	{
@@ -18,17 +20,11 @@ public class ThreadedClient implements Runnable
 
 	public void run()
 	{
-		Socket server = null;
 		HttpRequest request = null;
-		HttpResponse response = null;
+		// Array that will be filled with the data to send back to the client.
+		byte[] data;
 
-		/*
-		 * Process request. If there are any exceptions, then simply return and
-		 * end this request. This unfortunately means the client will hang for a
-		 * while, until it timeouts.
-		 */
-
-		/* Read request */
+		// Get the client request.
 		try
 		{
 			BufferedReader fromClient = new BufferedReader(new InputStreamReader(client.getInputStream()));
@@ -40,68 +36,136 @@ public class ThreadedClient implements Runnable
 			return;
 		}
 
-		// Check to see if the request was a null request (Client didn't send
-		// data).
-		if (request.nullRequest)
+		// Check to see if the request had errors in it.
+		if(request.errorCode == 1)
 		{
+			try
+			{
+				client.close();
+			}
+			catch (IOException e)
+			{
+			}
+			return;
+		}
+		if (request.errorCode == 2)
+		{
+			data = GenerateError("400 Bad Request");
+			Send(client, data, true);
+			System.out.println("A badly formatted request was ignored");
 			return;
 		}
 
-		byte[] data;
-		// See if we have a cached copy of the
-		if (!cache.InCache(request.absoluteURL))
+		if (!request.method.equals("GET"))
 		{
-			/* Send request to server */
-			try
-			{
-				/* Open socket and write request to socket */
-				server = new Socket(request.getHost(), request.getPort());
-				DataOutputStream toServer = new DataOutputStream(server.getOutputStream());
-				String reqString = request.toString();
-				toServer.write(reqString.getBytes("UTF-8"));
+			data = GenerateError("501 Not Implemented");
+			Send(client, data, true);
+			System.out.println("Method wasn't GET.");
+			return;
+		}
 
-				DataInputStream fromServer = new DataInputStream(server.getInputStream());
-				response = new HttpResponse(fromServer);
-				/* Write response to client. First headers, then body */
-				// IF the client closes the connection early, ignore it.
-				byte[] headers = response.toString().getBytes("UTF-8");
-				data = new byte[response.body.length + headers.length];
-				for (int i = 0; i < headers.length; i++)
-					data[i] = headers[i];
-				for (int i = 0; i < response.body.length; i++)
-					data[i + headers.length] = response.body[i];
-				server.close();
-				cache.InsertPage(request.absoluteURL, data);
-			}
-			catch (Exception e)
-			{
-				System.out.println("Error in non-cache code " + e);
-				return;
-			}
+		// See if we have a cached copy of the
+		if (cache.InCache(request.absoluteURL))
+		{
+			data = cache.GetPage(request.absoluteURL);
+			//System.out.println("Cache : " + request.absoluteURL);
 		}
 		else
 		{
-			data = cache.GetPage(request.absoluteURL);
+			// Request data from server.
+			data = RequestFromServer(request);
+			cache.InsertPage(request.absoluteURL, data);
+			//System.out.println("Server: " + request.absoluteURL);
 		}
 
+		// Send data back to client
+		Send(client, data, true);
+	}
+
+	public byte[] GenerateError(String error)
+	{
 		try
 		{
-			DataOutputStream toClient = new DataOutputStream(client.getOutputStream());
-			// toClient.write(response.toString().getBytes("UTF-8"));
-			// toClient.write(response.body);
+			String body = "<!DOCTYPE html>" + CRLF;
+			body += "<html><head><title>" + error;
+			body += "</title></head><body><p>" + error;
+			body += "</p></body></html>";
+
+			byte[] bodyBytes = body.getBytes("UTF-8");
+
+			String header = "HTTP/1.0 " + error + CRLF;
+			header += "Content-Type: text/html; charset=UTF-8" + CRLF;
+			header += "Content-Length: " + bodyBytes.length + CRLF + CRLF;
+			byte[] headerBytes = header.getBytes("UTF-8");
+
+			byte[] data = new byte[bodyBytes.length + headerBytes.length];
+			for (int i = 0; i < headerBytes.length; i++)
+				data[i] = headerBytes[i];
+			for (int i = 0; i < bodyBytes.length; i++)
+				data[i + headerBytes.length] = bodyBytes[i];
+			return data;
+		}
+		catch (Exception e)
+		{
+			System.out.println("Exception in GenerateError: " + e);
+			return new byte[0];
+		}
+	}
+
+	public byte[] RequestFromServer(HttpRequest request)
+	{
+		byte[] data = new byte[0];
+		if(request.getHost().length() == 0)
+			return data;
+		
+		try
+		{
+			Socket server = new Socket(request.getHost(), request.getPort());
+			Send(server, request.toString().getBytes("UTF-8"), false);
+			DataInputStream fromServer = new DataInputStream(server.getInputStream());
+			HttpResponse response = new HttpResponse(fromServer);
+			byte[] headers = response.toString().getBytes("UTF-8");
+			data = new byte[response.bodyBytes + headers.length];
+			for (int i = 0; i < headers.length; i++)
+				data[i] = headers[i];
+			for (int i = 0; i < response.bodyBytes && i < response.body.length; i++)
+				data[i + headers.length] = response.body[i];
+			server.close();
+			return data;
+		}
+		catch (UnknownHostException e)
+		{
+			System.out.println("Unknown Host: " + request.getHost());
+			return data;
+		}
+		catch (Exception e)
+		{
+			if(e.getMessage().contains("Connection timed out"))
+				System.out.println("Connection timed out to " + request.getHost());
+			System.out.println("Error in non-cache code " + e.toString() + "\n" + e.getMessage() + "\n");
+			e.printStackTrace();
+			return data;
+		}
+	}
+
+	public void Send(Socket s, byte[] data, boolean closeConnection)
+	{
+		try
+		{
+			DataOutputStream to = new DataOutputStream(s.getOutputStream());
 			try
 			{
-				toClient.write(data);
+				to.write(data);
 			}
 			catch (Exception e)
 			{
 			}
-			client.close();
+			if (closeConnection)
+				s.close();
 		}
 		catch (Exception e)
 		{
-			System.out.println("Error page back to client " + e);
+			System.out.println("Exception in SendAndClose: " + e);
 		}
-
 	}
 }

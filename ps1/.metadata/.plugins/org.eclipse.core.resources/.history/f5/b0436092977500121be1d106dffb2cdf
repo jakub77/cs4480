@@ -1,0 +1,105 @@
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.Socket;
+
+public class ThreadedClient implements Runnable
+{
+	private Socket client;
+	private HttpCache cache;
+
+	public ThreadedClient(Socket parameter, HttpCache cache, int threadNumber)
+	{
+		client = parameter;
+		this.cache = cache;
+	}
+
+	public void run()
+	{
+		HttpRequest request = null;
+
+		// Get the client request.
+		try
+		{
+			BufferedReader fromClient = new BufferedReader(new InputStreamReader(client.getInputStream()));
+			request = new HttpRequest(fromClient);
+		}
+		catch (IOException e)
+		{
+			System.out.println("Error reading request from client: " + e);
+			return;
+		}
+
+		// Check to see if the request had errors in it.
+		if (request.nullRequest)
+			return;
+
+		// Array that will be filled with the data to send back to the client.
+		byte[] data;
+
+		// See if we have a cached copy of the
+		if (cache.InCache(request.absoluteURL))
+		{
+			data = cache.GetPage(request.absoluteURL);
+			System.out.println("Cache : " + request.absoluteURL);
+		}
+		else
+		{
+			// Request data from server.
+			data = RequestFromServer(request);
+			cache.InsertPage(request.absoluteURL, data);
+			System.out.println("Server: " + request.absoluteURL);
+		}
+
+		// Send data back to client
+		Send(client, data, true);
+	}
+
+	public byte[] RequestFromServer(HttpRequest request)
+	{
+		byte[] data = null;
+		try
+		{
+			Socket server = new Socket(request.getHost(), request.getPort());
+			Send(server, request.toString().getBytes("UTF-8"), false);
+			DataInputStream fromServer = new DataInputStream(server.getInputStream());
+			HttpResponse response = new HttpResponse(fromServer);
+			byte[] headers = response.toString().getBytes("UTF-8");
+			data = new byte[response.body.length + headers.length];
+			for (int i = 0; i < headers.length; i++)
+				data[i] = headers[i];
+			for (int i = 0; i < response.body.length; i++)
+				data[i + headers.length] = response.body[i];
+			server.close();
+			return data;
+		}
+		catch (Exception e)
+		{
+			System.out.println("Error in non-cache code " + e);
+			return data;
+		}
+	}
+
+	public void Send(Socket s, byte[] data, boolean closeConnection)
+	{
+		try
+		{
+			DataOutputStream to = new DataOutputStream(s.getOutputStream());
+			try
+			{
+				to.write(data);
+			}
+			catch (Exception e)
+			{
+			}
+			if (closeConnection)
+				s.close();
+		}
+		catch (Exception e)
+		{
+			System.out.println("Exception in SendAndClose: " + e);
+		}
+	}
+}

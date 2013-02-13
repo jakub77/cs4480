@@ -16,19 +16,7 @@ namespace TestApp
             for (; ; )
             {
                 Console.WriteLine("Enter URL");
-                string raw = Console.ReadLine();
-                string host, URI;
-                int split = raw.IndexOf('/');
-                if (split == -1)
-                {
-                    host = raw;
-                    URI = string.Empty;
-                }
-                else
-                {
-                    host = raw.Substring(0, split);
-                    URI = raw.Substring(split);
-                }
+                string URL = Console.ReadLine();
 
                 Socket server = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 byte[] buffer = new byte[bufferSize];
@@ -45,7 +33,7 @@ namespace TestApp
 
                 try
                 {
-                    string request = "GET " + URI + " HTTP/1.0" + "\r\nHost: " + host + "\r\n\r\n";
+                    string request = "GET " + URL + " HTTP/1.0\r\n\r\n";
                     byte [] toSend = System.Text.Encoding.ASCII.GetBytes(request);
                     server.Send(toSend);
                 }
@@ -60,12 +48,7 @@ namespace TestApp
                     int recv = server.Receive(buffer);
                     string data = Encoding.ASCII.GetString(buffer, 0, recv);
                     buffer = new byte[bufferSize];
-                    Console.WriteLine(data);
-                    //if (!File.Exists("test.html"))
-                    //    File.Create("test.html");
-                    //File.
-                    File.WriteAllText("test.html", data, Encoding.UTF8);
-                    
+                    Console.WriteLine(data);                    
                 }
                 catch (Exception e)
                 {

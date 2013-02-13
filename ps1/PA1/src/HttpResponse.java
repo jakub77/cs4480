@@ -11,13 +11,13 @@ public class HttpResponse
 {
 	final static String CRLF = "\r\n";
 	/** How big is the buffer used for reading the object */
-	//final static int BUF_SIZE = 8192;
-	final static int BUF_SIZE = 1024*8;
+	// final static int BUF_SIZE = 8192;
+	final static int BUF_SIZE = 1024 * 8;
 	/**
 	 * Maximum size of objects that this proxy can handle. For the moment set to
 	 * 100 KB. You can adjust this as needed.
 	 */
-    final static int MAX_OBJECT_SIZE = 1024*1000;
+	final static int MAX_OBJECT_SIZE = 1024 * 1000;
 	/** Reply status and headers */
 	String version;
 	int status;
@@ -25,8 +25,8 @@ public class HttpResponse
 	String headers = "";
 	/* Body of reply */
 	byte[] body = new byte[MAX_OBJECT_SIZE];
-	String bodyString = "";
 	public boolean nullResponse = false;
+	int bodyBytes = 0;
 
 	/** Read response from server. */
 	@SuppressWarnings("deprecation")
@@ -40,7 +40,7 @@ public class HttpResponse
 		try
 		{
 			String line = fromServer.readLine();
-			
+
 			while (line.length() != 0)
 			{
 				if (!gotStatusLine)
@@ -62,7 +62,17 @@ public class HttpResponse
 				if (line.startsWith("Content-Length") || line.startsWith("Content-length"))
 				{
 					String[] tmp = line.split(" ");
-					length = Integer.parseInt(tmp[1]);
+					for (int i = 1; i < tmp.length; i++)
+					{
+						try
+						{
+							length = Integer.parseInt(tmp[i].trim());
+							break;
+						}
+						catch (Exception e)
+						{
+						}
+					}
 				}
 				line = fromServer.readLine();
 			}
@@ -72,12 +82,12 @@ public class HttpResponse
 			System.out.println("Error reading headers from server: " + e);
 			return;
 		}
-			
+
 		try
 		{
 			int bytesRead = 0;
 			byte buf[] = new byte[BUF_SIZE];
-			
+
 			boolean loop = false;
 
 			/*
@@ -110,10 +120,10 @@ public class HttpResponse
 				 */
 				for (int i = 0; i < res && (i + bytesRead) < MAX_OBJECT_SIZE; i++)
 				{
-					body[i+bytesRead] = buf[i];
-					/* Fill in */
+					body[i + bytesRead] = buf[i];
 				}
 				bytesRead += res;
+				bodyBytes += res;
 				buf = new byte[BUF_SIZE];
 			}
 		}
@@ -122,7 +132,6 @@ public class HttpResponse
 			System.out.println("Error reading response body: " + e);
 			return;
 		}
-		
 
 	}
 

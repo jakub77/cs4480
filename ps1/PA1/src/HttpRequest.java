@@ -19,8 +19,8 @@ public class HttpRequest
 	String headers = "";
 	/** Server and port */
 	private String host;
-	private int port;
-	public boolean nullRequest = false;
+	private int port = HTTP_PORT;
+	public int errorCode = 0;
 	public String absoluteURL = "";
 
 	/** Create HttpRequest by reading it from the client socket */
@@ -32,7 +32,7 @@ public class HttpRequest
 			firstLine = from.readLine();
 			if (firstLine == null)
 			{
-				nullRequest = true;
+				errorCode = 1;
 				return;
 			}
 		}
@@ -42,27 +42,32 @@ public class HttpRequest
 		}
 
 		String[] tmp = firstLine.split(" ");
+		if (tmp.length != 3)
+		{
+			errorCode = 2;
+			return;
+		}
+
 		method = tmp[0];
 		URI = tmp[1];
 		version = tmp[2];
-		
+
 		String workingURL = URI.toLowerCase();
-		if(workingURL.startsWith("http://"));
+		if (workingURL.startsWith("http://"))
 			workingURL = URI.substring(7);
+		if (!workingURL.contains("/"))
+			workingURL += "/";
 		absoluteURL = workingURL;
 		int split = workingURL.indexOf('/');
-		host = workingURL.substring(0,split);
-		URI = workingURL.substring(split);		
+		host = workingURL.substring(0, split);
+		URI = workingURL.substring(split);
 
 		if (URI.length() == 0)
 			URI = "/";
 
-		//System.out.println("URI is: " + URI);
-
 		if (!method.equals("GET"))
-		{
-			System.out.println("Error: Method not GET");
-		}
+			return;
+
 		try
 		{
 			String line = from.readLine();
@@ -80,6 +85,11 @@ public class HttpRequest
 					if (tmp[1].indexOf(':') > 0)
 					{
 						String[] tmp2 = tmp[1].split(":");
+						if(tmp2.length < 2)
+						{
+							errorCode = 3;
+							return;
+						}
 						host = tmp2[0];
 						port = Integer.parseInt(tmp2[1]);
 					}
@@ -97,7 +107,8 @@ public class HttpRequest
 			System.out.println("Error reading from socket: " + e);
 			return;
 		}
-		//System.out.println("Host to contact is: " + host + " at port " + port);
+		// System.out.println("Host to contact is: " + host + " at port " +
+		// port);
 	}
 
 	/** Return host for which this request is intended */
