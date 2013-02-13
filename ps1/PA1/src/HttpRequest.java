@@ -22,6 +22,8 @@ public class HttpRequest
 	/** Server and port */
 	private String host;
 	private int port;
+	public boolean nullRequest = false;
+	public String absoluteURL = "";
 
 	/** Create HttpRequest by reading it from the client socket */
 	public HttpRequest(BufferedReader from)
@@ -30,6 +32,11 @@ public class HttpRequest
 		try
 		{
 			firstLine = from.readLine();
+			if (firstLine == null)
+			{
+				nullRequest = true;
+				return;
+			}
 		}
 		catch (IOException e)
 		{
@@ -40,11 +47,19 @@ public class HttpRequest
 		method = tmp[0];
 		URI = tmp[1];
 		version = tmp[2];
+		
+		String workingURL = URI.toLowerCase();
+		if(workingURL.startsWith("http://"));
+			workingURL = URI.substring(7);
+		absoluteURL = workingURL;
+		int split = workingURL.indexOf('/');
+		host = workingURL.substring(0,split);
+		URI = workingURL.substring(split);		
 
 		if (URI.length() == 0)
 			URI = "/";
 
-		System.out.println("URI is: " + URI);
+		//System.out.println("URI is: " + URI);
 
 		if (!method.equals("GET"))
 		{
@@ -84,7 +99,7 @@ public class HttpRequest
 			System.out.println("Error reading from socket: " + e);
 			return;
 		}
-		System.out.println("Host to contact is: " + host + " at port " + port);
+		//System.out.println("Host to contact is: " + host + " at port " + port);
 	}
 
 	/** Return host for which this request is intended */

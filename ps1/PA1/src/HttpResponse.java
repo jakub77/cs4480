@@ -7,18 +7,20 @@
 
 import java.io.*;
 import java.net.*;
+import java.nio.CharBuffer;
 import java.util.*;
 
 public class HttpResponse
 {
 	final static String CRLF = "\r\n";
 	/** How big is the buffer used for reading the object */
-	final static int BUF_SIZE = 8192;
+	//final static int BUF_SIZE = 8192;
+	final static int BUF_SIZE = 1024*8;
 	/**
 	 * Maximum size of objects that this proxy can handle. For the moment set to
 	 * 100 KB. You can adjust this as needed.
 	 */
-	final static int MAX_OBJECT_SIZE = 100000;
+    final static int MAX_OBJECT_SIZE = 1024*1000;
 	/** Reply status and headers */
 	String version;
 	int status;
@@ -27,9 +29,11 @@ public class HttpResponse
 	/* Body of reply */
 	byte[] body = new byte[MAX_OBJECT_SIZE];
 	String bodyString = "";
+	public boolean nullResponse = false;
 
 	/** Read response from server. */
-	public HttpResponse(BufferedReader fromServer)
+	@SuppressWarnings("deprecation")
+	public HttpResponse(DataInputStream fromServer)
 	{
 		/* Length of the object */
 		int length = -1;
@@ -39,6 +43,7 @@ public class HttpResponse
 		try
 		{
 			String line = fromServer.readLine();
+			
 			while (line.length() != 0)
 			{
 				if (!gotStatusLine)
@@ -71,67 +76,68 @@ public class HttpResponse
 			return;
 		}
 
-		try
-		{
-			while(fromServer.ready())
-			{
-				bodyString += fromServer.readLine();			
-			}
-		}
-		catch (IOException e)
-		{
-			System.out.println("Error reading body: " + e);
-			return;
-		}
-		
-		
 //		try
 //		{
-//			int bytesRead = 0;
-//			byte buf[] = new byte[BUF_SIZE];
-//			boolean loop = false;
-//
-//			/*
-//			 * If we didn't get Content-Length header, just loop until the
-//			 * connection is closed.
-//			 */
-//			if (length == -1)
+//			while(fromServer.ready())
 //			{
-//				loop = true;
-//			}
-//
-//			/*
-//			 * Read the body in chunks of BUF_SIZE and copy the chunk into body.
-//			 * Usually replies come back in smaller chunks than BUF_SIZE. The
-//			 * while-loop ends when either we have read Content-Length bytes or
-//			 * when the connection is closed (when there is no Connection-Length
-//			 * in the response.
-//			 */
-//			while (bytesRead < length || loop)
-//			{
-//				/* Read it in as binary data */
-//				int res = 0;
-//				if (res == -1)
-//				{
-//					break;
-//				}
-//				/*
-//				 * Copy the bytes into body. Make sure we don't exceed the
-//				 * maximum object size.
-//				 */
-//				for (int i = 0; i < res && (i + bytesRead) < MAX_OBJECT_SIZE; i++)
-//				{
-//
-//					/* Fill in */
-//				}
-//				bytesRead += res;
+//				bodyString += fromServer.readLine();			
 //			}
 //		}
-//		catch (Exception e)
+//		catch (IOException e)
 //		{
-//			System.out.println("Error reading response body: " + e);
+//			System.out.println("Error reading body: " + e);
 //			return;
 //		}
+			
+		try
+		{
+			int bytesRead = 0;
+			byte buf[] = new byte[BUF_SIZE];
+			
+			boolean loop = false;
+
+			/*
+			 * If we didn't get Content-Length header, just loop until the
+			 * connection is closed.
+			 */
+			if (length == -1)
+			{
+				loop = true;
+			}
+
+			/*
+			 * Read the body in chunks of BUF_SIZE and copy the chunk into body.
+			 * Usually replies come back in smaller chunks than BUF_SIZE. The
+			 * while-loop ends when either we have read Content-Length bytes or
+			 * when the connection is closed (when there is no Connection-Length
+			 * in the response.
+			 */
+			while (bytesRead < length || loop)
+			{
+				/* Read it in as binary data */
+				int res = fromServer.read(buf, 0, BUF_SIZE);
+				if (res == -1)
+				{
+					break;
+				}
+				/*
+				 * Copy the bytes into body. Make sure we don't exceed the
+				 * maximum object size.
+				 */
+				for (int i = 0; i < res && (i + bytesRead) < MAX_OBJECT_SIZE; i++)
+				{
+					body[i+bytesRead] = buf[i];
+					/* Fill in */
+				}
+				bytesRead += res;
+				buf = new byte[BUF_SIZE];
+			}
+		}
+		catch (Exception e)
+		{
+			System.out.println("Error reading response body: " + e);
+			return;
+		}
 		
 
 	}

@@ -1,0 +1,33 @@
+import java.util.Dictionary;
+
+public class HttpCache
+{
+	volatile Dictionary d;
+
+	public HttpCache()
+	{
+		d = new Dictionary;
+	}
+
+	public byte[] checkCache(String absoluteURL)
+	{
+
+		return null;
+	}
+
+	public void increment()
+	{
+		synchronized (this)
+		{
+			i++;
+		}
+	}
+
+	public String toString()
+	{
+		synchronized (this)
+		{
+			return "Number # " + Integer.toString(i);
+		}
+	}
+}

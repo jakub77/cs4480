@@ -1,0 +1,116 @@
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.Socket;
+import java.net.UnknownHostException;
+
+public class ThreadedClient implements Runnable
+{
+	private Socket client;
+	private HttpCache cache;
+	private int threadNumber;
+	private int MAX_OBJECT_SIZE;
+
+	public ThreadedClient(Socket parameter, HttpCache cache, int threadNumber, int maxObjectSize)
+	{
+		client = parameter;
+		this.cache = cache;
+		this.threadNumber = threadNumber;
+		MAX_OBJECT_SIZE = maxObjectSize;
+	}
+
+	public void run()
+	{
+		Socket server = null;
+		HttpRequest request = null;
+		HttpResponse response = null;
+
+		/*
+		 * Process request. If there are any exceptions, then simply return and
+		 * end this request. This unfortunately means the client will hang for a
+		 * while, until it timeouts.
+		 */
+
+		/* Read request */
+		try
+		{
+			BufferedReader fromClient = new BufferedReader(new InputStreamReader(client.getInputStream()));
+			request = new HttpRequest(fromClient);
+		}
+		catch (IOException e)
+		{
+			System.out.println("Error reading request from client: " + e);
+			return;
+		}
+
+		// Check to see if the request was a null request (Client didn't send
+		// data).
+		if (request.nullRequest)
+		{
+			return;
+		}
+
+		// See if we have a cached copy of the
+
+		/* Send request to server */
+		try
+		{
+			/* Open socket and write request to socket */
+			server = new Socket(request.getHost(), request.getPort());
+			DataOutputStream toServer = new DataOutputStream(server.getOutputStream());
+			String reqString = request.toString();
+			toServer.write(reqString.getBytes("UTF-8"));
+			// System.out.println(reqString + "-------\n");
+		}
+		catch (UnknownHostException e)
+		{
+			System.out.println("Unknown host: " + request.getHost());
+			System.out.println(e);
+			return;
+		}
+		catch (IOException e)
+		{
+			System.out.println("Error writing request to server: " + e);
+			return;
+		}
+
+		/* Read response and forward it to client */
+		try
+		{
+			DataInputStream fromServer = new DataInputStream(server.getInputStream());
+			response = new HttpResponse(fromServer, MAX_OBJECT_SIZE);
+			
+			if(response.nullResponse)
+			{
+				client.close();
+				server.close();
+				return;			
+			}
+			
+			DataOutputStream toClient = new DataOutputStream(client.getOutputStream());
+
+			/* Write response to client. First headers, then body */
+			// IF the client closes the connection early, ignore it.
+			try
+			{
+				toClient.write(response.toString().getBytes("UTF-8"));
+				toClient.write(response.body);
+			}
+			catch (Exception e)
+			{
+
+			}
+
+			client.close();
+			server.close();
+			/* Insert object into the cache */
+			/* Fill in (optional exercise only) */
+		}
+		catch (IOException e)
+		{
+			System.out.println("Error writing response to client: " + e);
+		}
+	}
+}

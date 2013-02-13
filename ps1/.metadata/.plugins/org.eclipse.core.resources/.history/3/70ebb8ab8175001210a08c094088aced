@@ -1,0 +1,25 @@
+public class HttpCache
+{
+	volatile int i;
+
+	public HttpCache()
+	{
+		i = 0;
+	}
+
+	public void increment()
+	{
+		synchronized (this)
+		{
+			i++;
+		}
+	}
+
+	public String toString()
+	{
+		synchronized (this)
+		{
+			return "Number # " + Integer.toString(i);
+		}
+	}
+}

@@ -1,0 +1,18 @@
+import java.util.Dictionary;
+
+public class HttpCache
+{
+	volatile Dictionary d;
+	int MAX_OBJECT_SIZE;
+
+	public HttpCache(int maxObjectSize)
+	{
+		MAX_OBJECT_SIZE = maxObjectSize;
+	}
+
+	public byte[] checkCache(String absoluteURL)
+	{
+
+		return null;
+	}
+}

@@ -1,0 +1,19 @@
+public class HttpCache
+{
+	int i;
+
+	public HttpCache()
+	{
+		i = 0;
+	}
+
+	public void increment()
+	{
+		i++;
+	}
+
+	public String toString()
+	{
+		return Integer.toString(i);
+	}
+}

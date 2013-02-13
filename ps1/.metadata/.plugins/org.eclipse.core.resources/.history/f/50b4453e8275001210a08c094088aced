@@ -1,0 +1,16 @@
+import java.util.Dictionary;
+
+public class HttpCache
+{
+	volatile Dictionary d;
+
+	public HttpCache()
+	{
+	}
+
+	public byte[] checkCache(String absoluteURL)
+	{
+
+		return null;
+	}
+}

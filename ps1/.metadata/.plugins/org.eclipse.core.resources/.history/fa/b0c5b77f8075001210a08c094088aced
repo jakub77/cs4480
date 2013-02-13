@@ -1,0 +1,19 @@
+public class HttpCache
+{
+	volatile int i;
+
+	public HttpCache()
+	{
+		i = 0;
+	}
+
+	public void increment()
+	{
+		i++;
+	}
+
+	public String toString()
+	{
+		return "Number # " + Integer.toString(i);
+	}
+}
